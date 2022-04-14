@@ -1,68 +1,59 @@
 import json
+from utils import parse_args
 
-
+CHAT_FILE = 'result.json'
+OUTPUT_FILE = 'X_data.json'
+BOW_FILE = 'bow.txt'
 EMPTY = ['']
-# CHARS = ' abcdefghijklmnopqrstuvwxyzåäö.:,;()_-?!&'
-CHARS = ' abcdefghijklmnopqrstuvwxyzåäö.'
-MIN_COUNT = 2
+CHARS = ' abcdefghijklmnopqrstuvwxyzåäö'
 
 bow = []
 bow_count = []
-y = []
 X = []
 
 
 def main():
-    with open('result.json', 'r', encoding='utf-8') as json_file:
+    with open(CHAT_FILE, 'r', encoding='utf-8') as json_file:
         data = json.load(json_file)
-        chats = data['chats']
-        for chat in chats['list']:
-            prev_msg = ''
-            curr_msg = ''
-            prev_sender = ''
-            for msg in chat['messages']:
-                msg_text = msg['text']
-                if 'from' not in msg:
-                    continue
-                msg_sender = msg['from']
-                if type(msg_text) != str:
-                    continue
-                msg_text = ''.join(c for c in msg_text.lower() if c in CHARS)
-                if msg_text in EMPTY:
-                    continue
-                for word in msg_text.split():
-                    if word not in bow:
-                        bow.append(word.strip())
-                        bow_count.append(1)
-                    else:
-                        bow_count[bow.index(word)] += 1
-                if msg_sender == prev_sender or prev_sender == '':
-                    curr_msg = curr_msg + ' ' + msg_text + ' .'
-                    prev_sender = msg_sender
-                else:
-                    X.append(prev_msg.lstrip() + ' .')
-                    y.append(curr_msg.lstrip() + ' .')
-                    prev_msg = curr_msg
-                    curr_msg = msg_text
-                    prev_sender = msg_sender
 
-    clean_bow = []
-    for word, count in zip(bow, bow_count):
-        if count > MIN_COUNT:
-            clean_bow.append(word)
-
-    with open('X.txt', 'w') as f:
-        for word in X:
-            f.write("%s\n" % word)
-
-    with open('y.txt', 'w') as f:
-        for word in y:
-            f.write("%s\n" % word)
+    chats = data['chats']
+    for chat in chats['list']:
+        for msg in chat['messages']:
+            if 'from' not in msg:
+                continue
+            msg_time = msg['date']
+            msg_text = msg['text']
+            msg_sender = msg['from']
+            if type(msg_text) != str:
+                continue
             
-    with open('bow.txt', 'w') as f:
-        for word in clean_bow:
+            formated_msg = ''
+            for char in msg_text.lower():
+                if char in CHARS:
+                    formated_msg += char
+
+            for word in formated_msg.split():
+                if word not in bow:
+                    bow.append(word.strip())
+                    bow_count.append(1)
+                else:
+                    bow_count[bow.index(word)] += 1
+
+            msg = {'date': msg_time,
+                   'text': msg_text,
+                   'formated': formated_msg,
+                   'sender': msg_sender}
+            X.append(msg)
+
+
+    with open(OUTPUT_FILE, 'w') as f:
+        json.dump(X, f)
+
+    with open(BOW_FILE, 'w') as f:
+        for word in bow:
             f.write("%s\n" % word)
 
 
 if __name__ == '__main__':
+    args = parse_args()
     main()
