@@ -8,7 +8,6 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization, In
 from tensorflow.keras.optimizers import Adam
 
 
-REUSES = 3
 BATCH_SIZE = 128
 EPOCHS = 50
 HISTORY_VAR = 5
@@ -19,7 +18,7 @@ TRAIN_SPLITS = 50
 
 X_FILE = '../X_data.json'
 C_FILE = '../categories_medium.txt'
-MODEL_NAME = 'marko_gene_medium.h5'
+MODEL_NAME = 'marko_gene_medium_2.h5'
 
 EMPTY_CHAR = '#'
 CHARS = ' abcdefghijklmnopqrstuvwxyzåäö.' + EMPTY_CHAR
@@ -35,24 +34,28 @@ def create_model():
     x = BatchNormalization()(x)
     x = PReLU()(x)
     x = Dropout(0.05)(x)
+    x = Dense(32)(x)
+    x = BatchNormalization()(x)
+    x = PReLU()(x)
+    x = Dropout(0.05)(x)
     x = Model(inputs=inputA, outputs=x)
     # Chars
-    y = LSTM(64, return_sequences=True)(inputB)
+    y = LSTM(96, return_sequences=True)(inputB)
     y = BatchNormalization()(y)
     y = PReLU()(y)
     y = Dropout(0.2)(y)
-    y = LSTM(64, return_sequences=False)(y)
+    y = LSTM(96, return_sequences=False)(y)
     y = BatchNormalization()(y)
     y = PReLU()(y)
     y = Dropout(0.2)(y)    
     y = Model(inputB, outputs=y)
     # Combine
     combined = Concatenate()([x.output, y.output])
-    z = Dense(96)(combined)
+    z = Dense(128)(combined)
     z = BatchNormalization()(z)
     z = PReLU()(z)
     z = Dropout(0.05)(z)
-    z = Dense(96)(z)
+    z = Dense(128)(z)
     z = BatchNormalization()(z)
     z = PReLU()(z)
     z = Dropout(0.05)(z)
@@ -61,6 +64,8 @@ def create_model():
     model = Model(inputs=[x.input, y.input], outputs=z)
     opt = Adam(learning_rate=0.00001)
     model.compile(opt, 'categorical_crossentropy', metrics=['accuracy'])
+    
+    model.summary()
     return model
 
 
@@ -104,7 +109,7 @@ def train_split(split_idx: int, split_size: int):
     XB = [] # Previous characters of the message
     y = []
     for msg_idx, msg in enumerate(split_messages):
-        msg_str = EMPTY_CHAR*PRED_LENGTH + msg.strip()
+        msg_str = EMPTY_CHAR*PRED_LENGTH + msg.strip() + EMPTY_CHAR
         
         classes_one_hot = np.zeros(N_CATEGORIES)
         for _class in class_preds[msg_idx]:

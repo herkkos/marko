@@ -15,7 +15,7 @@ N_CATEGORIES = 3205
 N_SPLITS = 100
 TRAIN_SPLITS = 50
 
-MODEL_NAME = 'marko_response_medium_2.h5'
+MODEL_NAME = 'marko_response_medium_3.h5'
 C_FILE = '../categories_medium.txt'
 
 
@@ -27,28 +27,28 @@ def create_model():
     x = LSTM(16, return_sequences=False)(inputA)
     x = BatchNormalization()(x)
     x = PReLU()(x)
-    x = Dropout(0.05)(x)
+    x = Dropout(0.15)(x)
     x = Model(inputs=inputA, outputs=x)
-    # Chars
+    # Words
     y = LSTM(16, return_sequences=True)(inputB)
     y = BatchNormalization()(y)
     y = PReLU()(y)
-    y = Dropout(0.05)(y)
+    y = Dropout(0.15)(y)
     y = LSTM(16, return_sequences=False)(inputB)
     y = BatchNormalization()(y)
     y = PReLU()(y)
-    y = Dropout(0.05)(y)
+    y = Dropout(0.15)(y)
     y = Model(inputB, outputs=y)
     # Combine
     combined = Concatenate()([x.output, y.output])    
     z = Dense(32)(combined)
     z = BatchNormalization()(z)
     z = PReLU()(z)
-    z = Dropout(0.05)(z)
+    z = Dropout(0.15)(z)
     z = Dense(N_CATEGORIES, activation='softmax')(z)
     # Model
     model = Model(inputs=[x.input, y.input], outputs=z)
-    opt = Adam(learning_rate=0.00001)
+    opt = Adam(learning_rate=0.0001)
     model.compile(opt, 'categorical_crossentropy', metrics=['accuracy'])
     return model
 
