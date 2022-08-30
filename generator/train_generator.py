@@ -1,6 +1,9 @@
+import argparse
 import json
+import os
 import random
 
+from numba import cuda
 import numpy as np
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import to_categorical
@@ -68,15 +71,18 @@ def create_model():
     model.summary()
     return model
 
+def find_newest_model(path):
+    files = os.listdir(path)
+    paths = [os.path.join(path, basename) for basename in files]
+    return max(paths, key=os.path.getctime)
 
-def load_clf_model(model_name: str):
-    #TODO: use folder instead of file
-    #TODO: find newest model file from folder
+def load_clf_model(args):
+    filename = find_newest_model(args.folder)
     try:
-        model = load_model(model_name)
-        print(f"Loaded newest model: {model_name}")
+        model = load_model(filename)
+        print(f"Loaded newest model: {args.model_name}")
     except:
-        model = create_model()
+        model = create_model(args)
         print("Training new model from scratch")
 
     return model
@@ -144,7 +150,7 @@ def train_split(split_idx: int, split_size: int):
     
     model.save(MODEL_NAME)
 
-def main():    
+def main(args):    
     with open(C_FILE, 'r') as f:
         categories = f.readlines()
 
@@ -156,9 +162,32 @@ def main():
         try:
             train_split(random.randint(0, N_SPLITS-1), split_size)
         except:
-            ## TODO: clear GPU memory
             print("GPU memory full")
+            device = cuda.get_current_device()
+            device.reset()
 
 if __name__ == '__main__':
-    #TODO: move constants to CLI params
-    main()
+    parser = argparse.ArgumentParser(description="Train classification model.")
+    parser.add_argument("--batch-size", type=int, help="Batch size", default=64)
+    parser.add_argument("--epochs", type=int, help="Epochs", default=50)
+    parser.add_argument("--dropout", type=float, help="Dropout", default=0.15)
+    parser.add_argument("--lr", type=float, help="Learning rate", default=0.0001)
+    parser.add_argument("--pred-length", type=int, help="Number of words as history", default=30)
+    parser.add_argument("--classes", type=int, help="Number of classes: length of bag of words + 1", default=3205)
+    parser.add_argument("--splits", type=int, help="Number of data splits", default=125)
+    parser.add_argument("--steps", type=int, help="Number of training steps", default=50)
+    parser.add_argument("--folder", type=str, help="Name for model folder", required=True)
+    parser.add_argument("--file", type=str, help="Path to category data file", required=True)
+    args = parser.parse_args()
+    main(args)
+    
+
+    HISTORY_VAR = 5
+    N_CATEGORIES = 3205
+    PRED_LENGTH = 160
+    N_SPLITS = 150
+    TRAIN_SPLITS = 50
+
+    X_FILE = '../X_data.json'
+    C_FILE = '../categories_medium.txt'
+    MODEL_NAME = 'marko_gene_medium_2.h5'
