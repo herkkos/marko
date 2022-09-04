@@ -1,18 +1,18 @@
 import json
 from math import floor
+from statistics import median
 
 from Levenshtein import distance as lev
+import numpy as np
 
 
 RAW_FILE = 'result.json'
 BOW_FILE = 'bow_medium.txt'
-C_FOLDER = 'categories_medium'
+CORR_FILE = 'corr_medium.txt'
 X_FILE = 'X_data.json'
-MAX_LENGTH = 160
 MIN_COUNT = 20
 MIN_LENGTH = 2
 LEV_FACTOR = 0.35
-CATEGORY_BATCH_SIZE = 5000
 
 CHARS = ' abcdefghijklmnopqrstuvwxyzåäö'
 
@@ -93,6 +93,30 @@ def main():
                     word_categories.append(str(w_idx))
                     break
         categories.append(word_categories)
+        
+    class_preds = []
+    for line in categories:
+        if line.strip():
+            for x in line.strip().split(','):
+                class_preds.append(int(x))
+            class_preds.append(len(bow))
+
+    class_preds = np.array(class_preds)
+    counts = []
+    for word in range(len(bow) + 1):
+        counts.append(np.count_nonzero(class_preds == word))
+
+    max_count = max(counts)
+    median_count = median(counts)
+    fix_factor = median_count / max_count
+    corr_factors = []
+    for word in range(len(bow) + 1):
+        corr_factors.append((np.count_nonzero(class_preds[class_preds == word]) / max_count ) - fix_factor)
+    
+    CORR_FILE = 'corr_medium.txt'
+    with open(CORR_FILE, 'w') as f:
+        for word in corr_factors:
+            f.write("%s\n" % word)
 
     with open('categories_medium.txt', 'w', newline='') as f:
         for cats in categories:
