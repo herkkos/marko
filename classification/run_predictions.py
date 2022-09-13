@@ -2,15 +2,15 @@ import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import to_categorical
 
-N_CATEGORIES = 3205
-HISTORY_VAR = 30
+N_CATEGORIES = 1479
+HISTORY_VAR = 20
 PRED_LENGTH = 10
-SPLITS = 500
+SPLITS = 100
 
-C_FILE = '../categories_medium.txt'
-PRED_FILE = '../pred_medium.txt'
+C_FILE = '../categories_1000.txt'
+PRED_FILE = '../pred_1000.txt'
 
-RESPONSE_MODEL_NAME = 'medium/word_clf.h5'
+RESPONSE_MODEL_NAME = 'median1000/word_clf.h5'
 
 
 def main():
@@ -34,47 +34,36 @@ def main():
             class_preds.append(line_arr)
         del split_categories
     
-        XA = [] # Old words one-hot
-        XB = [] # New words one-hot
-        y = []
+
         prevs = []
+        preds = []
         for pred_idx in range(0, len(class_preds) - 1):
-            XA_msg = []
-            XB_msg = []
-            y_msg = []
+            msg_pred = []
             for cat in class_preds[pred_idx]:
                 if cat != (N_CATEGORIES -1):
                     prevs.append(cat)
     
             if len(prevs) < HISTORY_VAR:
+                preds.append([])
                 continue
     
             prevs = prevs[-HISTORY_VAR:]
             xa = []
             for i in range(0, HISTORY_VAR):
                 xa.append(to_categorical(prevs[i], N_CATEGORIES - 1))
+            xa = np.array(xa)
     
             xb = np.array([[0] * (N_CATEGORIES - 1) + [1]] * PRED_LENGTH)
-            for word_idx, word in enumerate(class_preds[pred_idx][:PRED_LENGTH]):
-                yy = to_categorical(word, N_CATEGORIES)
-                XA_msg.append(xa)
-                XB_msg.append(xb)
-                y_msg.append(yy)
+            for idx in range(PRED_LENGTH):
+                te_xa = np.expand_dims(xa, 0)
+                te_xb = np.expand_dims(xb, 0)
+                pred = model.predict(x=[te_xa, te_xb])
+                msg_pred.append(pred.argmax())
+                yy = to_categorical(pred.argmax(), N_CATEGORIES)
                 xb = np.vstack([xb, yy])[1:]
-    
-            XA.append(np.array(XA_msg, dtype=np.float32))
-            XB.append(np.array(XB_msg, dtype=np.float32))
-            y.append(np.array(y_msg, dtype=np.float32))
-        
-        preds = []
-        for i in range(len(y)):
-            msg_preds = []
-            if len(XA[i]):
-                score = model.predict([XA[i], XB[i]])
-                for cat in score:
-                    msg_preds.append(cat.argmax())
-    
-            preds.append(msg_preds)
+            
+            preds.append(msg_pred)
+            
             
         with open(PRED_FILE, 'a', newline='') as f:
             for pred in preds:

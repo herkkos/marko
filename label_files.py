@@ -7,14 +7,18 @@ import numpy as np
 
 
 RAW_FILE = 'result.json'
-BOW_FILE = 'bow_medium.txt'
-CORR_FILE = 'corr_medium.txt'
+BOW_FILE = 'bow_1000.txt'
+COUNT_FILE = 'bow_count.txt'
+CORR_FILE = 'corr_median.txt'
+CATEGORY_FILE = 'categories_median.txt'
 X_FILE = 'X_data.json'
-MIN_COUNT = 20
+MIN_COUNT = 50
+MAX_COUNT = 750
 MIN_LENGTH = 2
 LEV_FACTOR = 0.35
 
 CHARS = ' abcdefghijklmnopqrstuvwxyzåäö'
+GEN_CHARS = ' abcdefghijklmnopqrstuvwxyzåäö0123456789:❤👍😂😆😩🤣"()-:;,!?.'
 
 def contains_number(s):
     return any(i.isdigit() for i in s)
@@ -36,10 +40,14 @@ def main():
             if type(msg_text) != str:
                 continue
 
+            gen_msg = ''
             formated_msg = ''
             for char in msg_text.lower():
                 if char in CHARS:
                     formated_msg += char
+                    gen_msg += char
+                elif char in GEN_CHARS:
+                    gen_msg += char
             for word in formated_msg.split():
                 for b_word in bow:
                     if lev(word, b_word) <= floor(len(word)*LEV_FACTOR):
@@ -52,6 +60,7 @@ def main():
             msg = {'date': msg['date'],
                    'text': msg_text,
                    'formated': formated_msg,
+                   'generation': gen_msg,
                    'sender': msg['from']}
             X.append(msg)
 
@@ -59,7 +68,7 @@ def main():
     new_count = []
     non_used = []
     for word, count in zip(bow, bow_count):
-        if MIN_COUNT < count and len(word) >= MIN_LENGTH and not contains_number(word):
+        if MIN_COUNT < count and MAX_COUNT > count and len(word) >= MIN_LENGTH and not contains_number(word):
             new_bow.append(word)
             new_count.append(count)
         else:
@@ -74,11 +83,15 @@ def main():
         for word in bow:
             f.write("%s\n" % word)
             
+    # with open(COUNT_FILE, 'w') as f:
+    #     for word in bow_count:
+    #         f.write("%s\n" % word)
+            
             
             
     with open(BOW_FILE, 'r') as f:
         bow = f.readlines()
-            
+        
     with open(X_FILE, 'r', encoding='utf-8') as json_file:
         data = json.load(json_file)
 
@@ -96,14 +109,15 @@ def main():
         
     class_preds = []
     for line in categories:
-        if line.strip():
-            for x in line.strip().split(','):
+        if len(line) > 0:
+            # for x in line[0].strip().split(','):
+            for x in line:
                 class_preds.append(int(x))
             class_preds.append(len(bow))
 
     class_preds = np.array(class_preds)
     counts = []
-    for word in range(len(bow) + 1):
+    for word in range(len(bow)):
         counts.append(np.count_nonzero(class_preds == word))
 
     max_count = max(counts)
@@ -113,12 +127,11 @@ def main():
     for word in range(len(bow) + 1):
         corr_factors.append((np.count_nonzero(class_preds[class_preds == word]) / max_count ) - fix_factor)
     
-    CORR_FILE = 'corr_medium.txt'
     with open(CORR_FILE, 'w') as f:
         for word in corr_factors:
             f.write("%s\n" % word)
 
-    with open('categories_medium.txt', 'w', newline='') as f:
+    with open(CATEGORY_FILE, 'w', newline='') as f:
         for cats in categories:
             f.write("%s\n" % ','.join(cats))
 
