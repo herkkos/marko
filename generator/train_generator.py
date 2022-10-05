@@ -4,9 +4,11 @@ import os
 import random
 
 import numpy as np
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization, Input, Concatenate, PReLU
+from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization, Input, Concatenate, PReLU, Embedding, Bidirectional
 from tensorflow.keras.optimizers import Adam
 
 
@@ -17,34 +19,36 @@ CHAR_TO_INT = dict((w, i) for i, w in enumerate(CHARS))
 
 
 def create_model(args):
-    inputA = Input(shape=(args.history_length, args.classes))
-    inputB = Input(shape=(args.pred_length, N_CHARS))
+    inputA = Input(shape=(args.history_length))
+    inputB = Input(shape=(args.pred_length))
     # Categories
-    x = LSTM(256, return_sequences=True)(inputA)
+    x = Embedding(input_dim=args.classes, output_dim=64)(inputA)
+    x = Bidirectional(LSTM(64, return_sequences=True))(x)
     x = BatchNormalization()(x)
-    x = PReLU()(x)
-    x = Dropout(0.05)(x)
-    x = LSTM(256, return_sequences=False)(x)
+    # x = PReLU()(x)
+    x = Dropout(args.dropout)(x)
+    x = Bidirectional(LSTM(64, return_sequences=False))(x)
     x = BatchNormalization()(x)
-    x = PReLU()(x)
-    x = Dropout(0.05)(x)
+    # x = PReLU()(x)
+    x = Dropout(args.dropout)(x)
     x = Model(inputs=inputA, outputs=x)
     # Chars
-    y = LSTM(256, return_sequences=True)(inputB)
+    y = Embedding(input_dim=N_CHARS, output_dim=64)(inputB)
+    y = Bidirectional(LSTM(64, return_sequences=True))(y)
     y = BatchNormalization()(y)
-    y = PReLU()(y)
-    y = Dropout(0.15)(y)
-    y = LSTM(256, return_sequences=False)(y)
+    # y = PReLU()(y)
+    y = Dropout(0.05)(y)
+    y = Bidirectional(LSTM(64, return_sequences=False))(y)
     y = BatchNormalization()(y)
-    y = PReLU()(y)
-    y = Dropout(0.15)(y)    
+    # y = PReLU()(y)
+    y = Dropout(0.05)(y)    
     y = Model(inputB, outputs=y)
     # Combine
     combined = Concatenate()([x.output, y.output])
-    z = Dense(512)(combined)
+    z = Dense(128)(combined)
     z = BatchNormalization()(z)
     z = PReLU()(z)
-    z = Dropout(0.05)(z)
+    z = Dropout(args.dropout)(z)
     z = Dense(N_CHARS, activation='softmax')(z)
     # Model
     model = Model(inputs=[x.input, y.input], outputs=z)
@@ -107,27 +111,22 @@ def train_split(args, split_idx: int, split_size: int):
     XB = [] # Previous characters of the message
     y = []
     for msg_idx, msg in enumerate(split_messages):
-        msg_str = EMPTY_CHAR*args.pred_length + msg.strip() + EMPTY_CHAR
+        msg_str = msg.strip() + EMPTY_CHAR
         
-        classes_one_hot = np.array([[0] * (args.classes - 1) + [1]] * args.history_length)
+        xa = []
         for word in class_preds[msg_idx][:args.history_length]:
-            xx = to_categorical(word, args.classes)
-            classes_one_hot = np.vstack([classes_one_hot, xx])[1:]
+            xa.append(word)
+        xa = [args.classes - 1] * args.history_length + xa
+        xa = xa[-args.history_length:]
         
         for char_idx, char in enumerate(msg_str[:-1]):
-            if char_idx < args.pred_length - 1:
-                continue
-
             xx = []
-            for i in reversed(range(args.pred_length)):
-                xx.append(to_categorical(CHAR_TO_INT[msg_str[char_idx-i]], N_CHARS))
-            
-            if (not class_preds[msg_idx]):
-                continue
-            
-            if max(class_preds[msg_idx]) == 0:
-                continue
-            XA.append(classes_one_hot)
+            for i in reversed(range(char_idx + 1)):
+                xx.append(CHAR_TO_INT[msg_str[char_idx-i]])
+            xx = [CHAR_TO_INT[EMPTY_CHAR]] * args.pred_length + xx
+            xx = xx[-args.pred_length:]
+        
+            XA.append(xa)
             XB.append(xx)
             y.append(to_categorical(CHAR_TO_INT[msg_str[char_idx + 1]], N_CHARS))
 
@@ -135,10 +134,17 @@ def train_split(args, split_idx: int, split_size: int):
     XB = np.array(XB).astype(float)
     y = np.array(y).astype(float)
         
-    model.fit(x=[XA, XB],
-              y=y,
+    XA_train, XA_test = train_test_split(XA, train_size=0.7, random_state=42)
+    XB_train, XB_test = train_test_split(XB, train_size=0.7, random_state=42)
+    y_train, y_test = train_test_split(y, train_size=0.7, random_state=42)
+    
+    model.fit(x=[XA_train, XB_train],
+              y=y_train,
               epochs=args.epochs,
               batch_size=args.batch_size,
+              validation_data=([XA_test,XB_test], y_test),
+              callbacks=[EarlyStopping(monitor='val_loss', patience=args.early_stop),
+                         ReduceLROnPlateau('val_loss', 0.5, patience=args.reduce_lr)],
               shuffle=True)
     
     model.save(os.path.join(args.folder, "word_gen.h5"))
@@ -162,12 +168,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train classification model.")
     parser.add_argument("--batch-size", type=int, help="Batch size", default=64)
     parser.add_argument("--epochs", type=int, help="Epochs", default=50)
-    parser.add_argument("--dropout", type=float, help="Dropout", default=0.15)
-    parser.add_argument("--lr", type=float, help="Learning rate", default=5e-6)
+    parser.add_argument("--dropout", type=float, help="Dropout", default=0.33)
+    parser.add_argument("--lr", type=float, help="Learning rate", default=1e-6)
+    parser.add_argument("--early-stop", type=int, help="earlystop", default=10)
+    parser.add_argument("--reduce-lr", type=int, help="reduce-lr", default=5)
     parser.add_argument("--history-length", type=int, help="Number of words as history", default=10)
-    parser.add_argument("--pred-length", type=int, help="Number of words as history", default=160)
-    parser.add_argument("--classes", type=int, help="Number of classes: length of bag of words", default=1479)
-    parser.add_argument("--splits", type=int, help="Number of data splits", default=300)
+    parser.add_argument("--pred-length", type=int, help="Number of words as history", default=50)
+    parser.add_argument("--classes", type=int, help="Number of classes: length of bag of words", default=13405)
+    parser.add_argument("--splits", type=int, help="Number of data splits", default=200)
     parser.add_argument("--steps", type=int, help="Number of training steps", default=50)
     parser.add_argument("--message-file", type=str, help="Path to message file", default="../X_data.json")
     parser.add_argument("--folder", type=str, help="Name for model folder", required=True)
