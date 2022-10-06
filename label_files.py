@@ -1,3 +1,4 @@
+import argparse
 import json
 from math import floor
 from statistics import median
@@ -18,7 +19,7 @@ MIN_LENGTH = 2
 LEV_FACTOR = 0.35
 
 CHARS = ' abcdefghijklmnopqrstuvwxyzåäö'
-GEN_CHARS = ' abcdefghijklmnopqrstuvwxyzåäö0123456789:❤👍😂😆😩🤣"()-:;,!?.'
+GEN_CHARS = r""" abcdefghijklmnopqrstuvwxyzåäö0123456789❤👍😂😆😩🤣😊😋🤢😅🤝🔥⁉️💀🥴😭🤔😟😔🥰😍🥺🖕👌💅🏻🌚💸#&/=€@+*<>"()'-_:;,!?."""
 
 def contains_number(s):
     return any(i.isdigit() for i in s)
@@ -32,6 +33,13 @@ def main():
     X = []
     chats = data['chats']
     for chat in chats['list']:
+        
+        if 'name' not in chat:
+            continue
+        
+        if chat['name'] != 'Elli':
+            continue
+        
         for msg in chat['messages']:
             if 'from' not in msg:
                 continue
@@ -83,9 +91,9 @@ def main():
         for word in bow:
             f.write("%s\n" % word)
             
-    # with open(COUNT_FILE, 'w') as f:
-    #     for word in bow_count:
-    #         f.write("%s\n" % word)
+    with open(COUNT_FILE, 'w') as f:
+        for word in bow_count:
+            f.write("%s\n" % word)
             
             
             
@@ -110,7 +118,6 @@ def main():
     class_preds = []
     for line in categories:
         if len(line) > 0:
-            # for x in line[0].strip().split(','):
             for x in line:
                 class_preds.append(int(x))
             class_preds.append(len(bow))

@@ -12,7 +12,7 @@ from tensorflow.keras.utils import to_categorical
 
 
 EMPTY_CHAR = '#'
-CHARS = ' abcdefghijklmnopqrstuvwxyzåäö0123456789:❤👍😂😆😩🤣"()-:;,!?.' + EMPTY_CHAR
+CHARS = EMPTY_CHAR + ' abcdefghijklmnopqrstuvwxyzåäö0123456789:❤👍😂😆😩🤣"()-:;,!?.'
 N_CHARS = len(CHARS)
 CHAR_TO_INT = dict((w, i) for i, w in enumerate(CHARS))
 
@@ -23,34 +23,38 @@ def create_model(args):
     inputA = Input(shape=(args.history_length))
     inputB = Input(shape=(args.pred_length))
     # Words
-    x = Embedding(input_dim=args.classes, output_dim=256, input_length=args.history_length)(inputA)
+    x = Embedding(input_dim=args.classes, output_dim=256)(inputA)
     x = Bidirectional(LSTM(256, return_sequences=True))(x)
     x = BatchNormalization()(x)
     x = PReLU()(x)
     x = Dropout(args.dropout)(x)
-    x = Bidirectional(LSTM(256, return_sequences=False))(x)
+    x = Bidirectional(LSTM(128, return_sequences=True))(x)
+    x = BatchNormalization()(x)
+    x = PReLU()(x)
+    x = Dropout(args.dropout)(x)
+    x = Bidirectional(LSTM(64, return_sequences=False))(x)
     x = BatchNormalization()(x)
     x = PReLU()(x)
     x = Dropout(args.dropout)(x)
     x = Model(inputs=inputA, outputs=x)
     
-    y = Embedding(N_CHARS, output_dim=256, input_length=args.pred_length)(inputB)
-    y = LSTM(256, return_sequences=True)(y)
+    y = Embedding(N_CHARS, output_dim=128)(inputB)
+    y = Bidirectional(LSTM(128, return_sequences=True))(y)
     y = BatchNormalization()(y)
     y = PReLU()(y)
     y = Dropout(args.dropout)(y)
-    y = LSTM(256, return_sequences=False)(y)
+    y = Bidirectional(LSTM(64, return_sequences=False))(y)
     y = BatchNormalization()(y)
     y = PReLU()(y)
     y = Dropout(args.dropout)(y)
     y = Model(inputs=inputB, outputs=y)
     
     combined = Concatenate()([x.output, y.output])
-    z = Dense(512)(combined)
+    z = Dense(128)(combined)
     z = BatchNormalization()(z)
     z = PReLU()(z)
     z = Dropout(args.dropout)(z)
-    z = Dense(512)(z)
+    z = Dense(128)(z)
     z = BatchNormalization()(z)
     z = PReLU()(z)
     z = Dropout(args.dropout)(z)
@@ -110,38 +114,32 @@ def train_split(args, split_idx: int, split_size: int):
         if line.strip():
             for x in line.strip().split(','):
                 line_arr.append(int(x))
-            line_arr.append(args.classes)
         class_preds.append(line_arr)
     del split_categories
 
     XA = [] # Old words one-hot
     XB = [] # New chars one-hot
     y = []
-    prevs = []
     for idx in range(0, len(class_preds)):
-        if (not class_preds[idx]):
+        if idx < args.hist_msgs:
             continue
         
-        msg_str = EMPTY_CHAR*args.pred_length + split_messages[idx].strip() + EMPTY_CHAR
-        for cat in class_preds[idx]:
-            if cat != (args.classes):
-                prevs.append(cat)
+        msg_str = split_messages[idx].strip() + EMPTY_CHAR
 
-        if len(prevs) < args.history_length:
-            continue
-
-        prevs = prevs[-args.history_length:]
         xa = []
-        for i in range(0, args.history_length):
-            xa.append(prevs[i])
+        for i in reversed(range(0, args.hist_msgs)):
+            for cat in class_preds[idx-i]:
+                xa.append(cat)
+
+        xa = [args.classes] * args.history_length + xa
+        xa = xa[-args.history_length:]
 
         for char_idx, char in enumerate(msg_str[:-1]):
-            if char_idx < args.pred_length - 1:
-                continue
-
             xx = []
-            for i in reversed(range(args.pred_length)):
+            for i in reversed(range(char_idx+1)):
                 xx.append(CHAR_TO_INT[msg_str[char_idx-i]])
+            xx = [CHAR_TO_INT[EMPTY_CHAR]] * args.pred_length + xx
+            xx = xx[-args.pred_length:]
             
             XA.append(xa)
             XB.append(xx)
@@ -184,12 +182,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train classification model.")
     parser.add_argument("--batch-size", type=int, help="Batch size", default=64)
     parser.add_argument("--epochs", type=int, help="Epochs", default=50)
-    parser.add_argument("--dropout", type=float, help="Dropout", default=0.20)
-    parser.add_argument("--lr", type=float, help="Learning rate", default=1e-6)
-    parser.add_argument("--history-length", type=int, help="Number of words as history", default=45)
+    parser.add_argument("--dropout", type=float, help="Dropout", default=0.33)
+    parser.add_argument("--lr", type=float, help="Learning rate", default=1e-5)
+    parser.add_argument("--history-length", type=int, help="Number of words as history", default=50)
+    parser.add_argument("--hist-msgs", type=int, help="Number of messages as history", default=10)
     parser.add_argument("--pred-length", type=int, help="Number of words as history", default=160)
-    parser.add_argument("--classes", type=int, help="Number of classes: length of bag of words", default=1479)
-    parser.add_argument("--splits", type=int, help="Number of data splits", default=550)
+    parser.add_argument("--classes", type=int, help="Number of classes: length of bag of words", default=13405)
+    parser.add_argument("--splits", type=int, help="Number of data splits", default=350)
     parser.add_argument("--steps", type=int, help="Number of training steps", default=1000)
     parser.add_argument("--file", type=str, help="Path to category data file", required=True)
     parser.add_argument("--message-file", type=str, help="Path to message file", default="../X_data.json")

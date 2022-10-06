@@ -1,6 +1,15 @@
+'''
+This training script is based on training TensorFlow tutorial which can be found in:
+https://github.com/tensorflow/text/blob/master/docs/tutorials/transformer.ipynb
+
+Copyright 2022 The TensorFlow Authors.
+https://www.apache.org/licenses/LICENSE-2.0
+'''
+
 import argparse
 import os
 import string
+from random import randint
 import time
 
 import numpy as np
@@ -17,7 +26,7 @@ MODEL_DIR = 'bert_kaikki_1'
 checkpoint_path = './checkpoints_kaikki_5/train'
 CATEGORY_FILE = '../categories_bert.txt'
 
-HIST_LEN = 2
+HIST_LEN = 5
 DROPOUT = 0.1
 EPOCHS = 1000
 
@@ -456,57 +465,57 @@ def train_split(args):
         train_accuracy(accuracy_function(tar_real, predictions))
 
 
-    with open(CATEGORY_FILE, 'r') as f:
-        categories = f.read().splitlines() 
-
-    class_preds = []
-    for line in categories:
-        line_arr = []
-        trimmed_line = line.translate(str.maketrans('', '', string.whitespace)).split(',')
-        for x in trimmed_line:
-            if int(x) != tokenizer.cls_token_id and int(x) != tokenizer.sep_token_id:
-                line_arr.append(int(x))
-        class_preds.append(line_arr)
-    del categories
-
-    XA = []
-    XB = []
-    Y = []
-    for pred_idx in range(HIST_LEN, len(class_preds)):
-        if len(class_preds[pred_idx]) == 0:
-            continue
-
-        xa = []
-        for i in reversed(range(1,HIST_LEN)):
-            for cat in class_preds[pred_idx-i]:
-                xa.append(cat)
-        if len(xa) == 0:
-            continue
-        
-        if len(xa) > INPUT_SIZE:
-            xa = xa[len(xa)-INPUT_SIZE:]
-        else:
-            xa = xa + [tokenizer.pad_token_id] * INPUT_SIZE
-            xa = xa[:INPUT_SIZE]
-
-        xb = [tokenizer.cls_token_id] + class_preds[pred_idx]
-        xb = xb + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
-        xb = xb[:OUTPUT_SIZE]
-
-        y = class_preds[pred_idx].copy()
-        y.append(tokenizer.sep_token_id)
-        y = y + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
-        y = y[:OUTPUT_SIZE]
-
-        XA.append(np.array(xa))
-        XB.append(np.array(xb))
-        Y.append(np.array(y))
-    del class_preds
-
     for epoch in range(EPOCHS):
-        XA_train, XA_test = train_test_split(XA, train_size=0.8, random_state=42)
-        XB_train, XB_test = train_test_split(XB, train_size=0.8, random_state=42)
-        y_train, y_test = train_test_split(Y, train_size=0.8, random_state=42)
+        with open(CATEGORY_FILE, 'r') as f:
+            categories = f.read().splitlines() 
+
+        class_preds = []
+        for line in categories:
+            line_arr = []
+            trimmed_line = line.translate(str.maketrans('', '', string.whitespace)).split(',')
+            for x in trimmed_line:
+                if int(x) != tokenizer.cls_token_id and int(x) != tokenizer.sep_token_id:
+                    line_arr.append(int(x))
+            class_preds.append(line_arr)
+        del categories
+
+        XA = []
+        XB = []
+        Y = []
+        for pred_idx in range(HIST_LEN, len(class_preds)):
+            if len(class_preds[pred_idx]) == 0:
+                continue
+
+            xa = []
+            for i in reversed(range(1,randint(1, HIST_LEN+1))):
+                for cat in class_preds[pred_idx-i]:
+                    xa.append(cat)
+            if len(xa) == 0:
+                continue
+            
+            if len(xa) > INPUT_SIZE:
+                xa = xa[len(xa)-INPUT_SIZE:]
+            else:
+                xa = xa + [tokenizer.pad_token_id] * INPUT_SIZE
+                xa = xa[:INPUT_SIZE]
+
+            xb = [tokenizer.cls_token_id] + class_preds[pred_idx]
+            xb = xb + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
+            xb = xb[:OUTPUT_SIZE]
+
+            y = class_preds[pred_idx].copy()
+            y.append(tokenizer.sep_token_id)
+            y = y + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
+            y = y[:OUTPUT_SIZE]
+
+            XA.append(np.array(xa))
+            XB.append(np.array(xb))
+            Y.append(np.array(y))
+        del class_preds
+        
+        XA_train, XA_test = train_test_split(XA, train_size=len(XA)-1)
+        XB_train, XB_test = train_test_split(XB, train_size=len(XB)-1)
+        y_train, y_test = train_test_split(Y, train_size=len(Y)-1)
         train_batches = []
         
         N_SPLITS = len(y_train) // 64

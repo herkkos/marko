@@ -14,7 +14,7 @@ N_CHARS = len(CHARS)
 CHAR_TO_INT = dict((w, i) for i, w in enumerate(CHARS))
 INT_TO_CHAR = dict((i, w) for i, w in enumerate(CHARS))
 
-FOLDER = 'combined1'
+FOLDER = 'combined_median'
 CAT_FILE = '../categories_1000.txt'
 N_CLASSES = 1479
 PRED_LENGTH = 160
@@ -69,37 +69,31 @@ def train_split(args, split_idx: int, split_size: int):
     del split_categories
 
     XA = [] # Old words one-hot
-    XB = [] # New chars one-hot
+    XB = [] # New words one-hot
     y = []
-    prevs = []
-    for idx in range(0, len(class_preds)):
-        if (not class_preds[idx]):
-            continue
-        
-        msg_str = EMPTY_CHAR*PRED_LENGTH + split_messages[idx].strip() + EMPTY_CHAR
-        for cat in class_preds[idx]:
-            if cat != (N_CLASSES):
-                prevs.append(cat)
-
-        if len(prevs) < HIST_LEN:
+    for pred_idx in range(0, len(class_preds)):
+        if pred_idx < HIST_LEN:
             continue
 
-        prevs = prevs[-HIST_LEN:]
         xa = []
-        for i in range(0, HIST_LEN):
-            xa.append(to_categorical(prevs[i], N_CLASSES))
-
-        for char_idx, char in enumerate(msg_str[:-1]):
-            if char_idx < PRED_LENGTH - 1:
-                continue
-
-            xx = []
-            for i in reversed(range(PRED_LENGTH)):
-                xx.append(to_categorical(CHAR_TO_INT[msg_str[char_idx-i]], N_CHARS))
+        for i in reversed(range(1, HIST_LEN)):
+            for cat in class_preds[pred_idx-i]:
+                xa.append(cat)
+        xa = [N_CLASSES] * HIST_LEN + xa
+        xa = xa[-HIST_LEN:]
+    
+        for word_idx, word in enumerate(class_preds[pred_idx][:PRED_LENGTH]):
+            yy = to_categorical(word, N_CLASSES)
+            
+            xb = []
+            for i in reversed(range(word_idx)):
+                xb.append(class_preds[pred_idx][word_idx-i])
+            xb = [N_CLASSES] * PRED_LENGTH + xb
+            xb = xb[-PRED_LENGTH:]
             
             XA.append(xa)
-            XB.append(xx)
-            y.append(to_categorical(CHAR_TO_INT[msg_str[char_idx + 1]], N_CHARS))
+            XB.append(xb)
+            y.append(yy)
 
     XA = np.array(XA, dtype=np.float32)
     XB = np.array(XB, dtype=np.float32)
