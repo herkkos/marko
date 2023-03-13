@@ -8,52 +8,61 @@ https://www.apache.org/licenses/LICENSE-2.0
 
 import argparse
 from datetime import datetime
-import os
-from random import randint
+from random import randint, random
 import string
 
 import numpy as np
 from sklearn.model_selection import train_test_split
+from tensorflow.keras import backend as K
 from transformers import BertTokenizer
 
 import advanced_transformer
 
-tokenizer = BertTokenizer.from_pretrained('bert-marko-vocab.txt')
+tokenizer = BertTokenizer.from_pretrained('bert-2-vocab.txt')
 N_CLASSES = tokenizer.vocab_size
 
-MODEL_DIR = 'advanced'
-checkpoint_path = './checkpoints_advanced/train'
-CATEGORY_FILE = '../categories_bert_ts.txt'
+MODEL_DIR = 'advanced5.h5'
+CATEGORY_FILE = '../categories_bert2_ts.txt'
 
-HIST_LEN = 10
+HIST_LEN = 20
 MAX_TIME = 60 * 30
 OVERALL = 200
 
-DROPOUT = 0.1
-EPOCHS = 100
-LR = 0.00001
-B_SIZE = 64
+EPOCHS = 1000
+B_SIZE = 16
+learning_rate = 0.00005
 
-SPEAKER_SIZE = 128
-SECOND_SIZE = 128
-OTHER_SIZE = 64
-OVERALL_SIZE = 128
-
-OUTPUT_SIZE = 64
+SPEAKER_SIZE = 256
+SECOND_SIZE = 256
+OTHER_SIZE = 256
+OVERALL_SIZE = 256
+OUTPUT_SIZE = 128
 
 
-# allow gpu memory usage
-# import tensorflow as tf
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# for gpu in gpus:
-#   tf.config.experimental.set_memory_growth(gpu, True)
+def save_model(model, path):
+    model.save_weights(path)
+    print("model saved")
+
+def _load_model(path):
+    transformer = advanced_transformer.create_model()
+    print("loading weights")
+    transformer.load_weights(path)
+    print("weights loaded")
+    K.set_value(transformer.optimizer.learning_rate, learning_rate)
+    print("LR set")
+    return transformer
+
 
 def train_model(args):
-    transformer = advanced_transformer.create_model()
+    print("loading model...")
+    transformer = _load_model(MODEL_DIR)
+    #transformer = advanced_transformer.create_model()
 
+    print("loading categories...")
     with open(CATEGORY_FILE, 'r') as f:
         categories = f.read().splitlines()
 
+    print("processing categories...")
     class_preds = []
     senders = []
     timestamps = []
@@ -74,6 +83,7 @@ def train_model(args):
     cat_counts = cat_counts / len(categories)
     del categories
 
+    print("processing training data...")
     X_speaker = []
     X_second = []
     X_other = []
@@ -88,8 +98,15 @@ def train_model(args):
         if len(class_preds[pred_idx]) == 0:
             continue
         
+        # Normalize training data based on how common the output is
+        y = class_preds[pred_idx].copy()
+        if random() < sum(cat_counts[x] for x in y):
+            continue
+        y.append(tokenizer.sep_token_id)
+        y = y + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
+        y = y[:OUTPUT_SIZE]
+        
         # Time difference
-        # TODO: could be a vector
         if prev_ts:
             # Chech if timestamp is invalid. Happens when conversation changes
             if timestamps[pred_idx] < prev_ts:
@@ -127,7 +144,6 @@ def train_model(args):
                 other_x.append((class_preds[h_i] + [tokenizer.pad_token_id] * OTHER_SIZE)[:OTHER_SIZE])
 
         # Overall
-        # TODO: could normalize over over all token usage
         overall_x = np.zeros(N_CLASSES)
         for i in range(1, OVERALL):
             h_i = pred_idx - i
@@ -136,18 +152,14 @@ def train_model(args):
             for c in class_preds[h_i]:
                 overall_x[c] += max(0.5, (OVERALL - i) / OVERALL)
         overall_x = overall_x / cat_counts
-        ind = np.argpartition(overall_x, -OVERALL_SIZE)[-OVERALL_SIZE:].tolist()
-        overall_x = ind + [tokenizer.pad_token_id] * (OVERALL_SIZE)
-        overall_x = overall_x[:OVERALL_SIZE]
+        # overall_x = overall_x / overall_x.sum()
+        # ind = np.argpartition(overall_x, -OVERALL_SIZE)[-OVERALL_SIZE:].tolist()
+        # overall_x = ind + [tokenizer.pad_token_id] * (OVERALL_SIZE)
+        # overall_x = overall_x[:OVERALL_SIZE]
 
         xb = [tokenizer.cls_token_id] + class_preds[pred_idx]
         xb = xb + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
         xb = xb[:OUTPUT_SIZE]
-
-        y = class_preds[pred_idx].copy()
-        y.append(tokenizer.sep_token_id)
-        y = y + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
-        y = y[:OUTPUT_SIZE]
 
         X_speaker.append(np.array(sender_x, dtype=np.float32))
         X_second.append(np.array(second_x, dtype=np.float32))
@@ -157,26 +169,18 @@ def train_model(args):
         XB.append(np.array(xb, dtype=np.int64))
         Y.append(np.array(y, dtype=np.int64))
 
-    del class_preds
-
+    print("splitting data...")
     random_state = randint(0, 100000)
-    # train_size=len(X_speaker)-1
     train_size=0.9
     X_speaker_train, X_speaker_test = train_test_split(np.array(X_speaker), train_size=train_size, random_state=random_state)
-    del X_speaker
     X_second_train, X_second_test = train_test_split(np.array(X_second), train_size=train_size, random_state=random_state)
-    del X_second
     X_other_train, X_other_test = train_test_split(np.array(X_other), train_size=train_size, random_state=random_state)
-    del X_other
     X_time_train, X_time_test = train_test_split(np.array(X_time), train_size=train_size, random_state=random_state)
-    del X_time
     X_overall_train, X_overall_test = train_test_split(np.array(X_overall), train_size=train_size, random_state=random_state)
-    del X_overall
     XB_train, XB_test = train_test_split(np.array(XB), train_size=train_size, random_state=random_state)
-    del XB
     y_train, y_test = train_test_split(np.array(Y), train_size=train_size, random_state=random_state)
-    del Y
-    
+
+    print("split data...")
     train_batches = []
     N_SPLITS = len(y_train) // B_SIZE
     for i in range(N_SPLITS-1):
@@ -187,28 +191,29 @@ def train_model(args):
                                 X_overall_train[i*B_SIZE : (i+1)*B_SIZE],
                                 XB_train[i*B_SIZE : (i+1)*B_SIZE]),
                                 y_train[i*B_SIZE : (i+1)*B_SIZE]))
-    del X_speaker_train, X_speaker_test
-    del X_second_train, X_second_test
-    del X_other_train, X_other_test
-    del X_time_train, X_time_test
-    del X_overall_train, X_overall_test
-    del XB_train, XB_test
 
-    for (batch, (train, tar)) in enumerate(train_batches):
-        try:
-            transformer.fit(x=train,
-                      y=tar,
-                      epochs=EPOCHS,
-                      batch_size=B_SIZE,
-                       # validation_data=(test, y_test),
-                      shuffle=True)
-        except Exception as exception:
-            tete = exception
-            print(exception)
-            break
+    print("training...")
+    for epch in range(EPOCHS):
+        number_of_exceptions = 0
+        for (batch, (train, tar)) in enumerate(train_batches):
+            print(f"Epoch: {epch} batch: {batch}/{N_SPLITS}")
+            try:
+                transformer.fit(x=train,
+                          y=tar,
+                          epochs=25,
+                          batch_size=B_SIZE,
+                          shuffle=True)
+                if batch % 50 == 0:
+                    save_model(transformer, MODEL_DIR)
+            except Exception as exception:
+                tete = exception
+                print(tete)
+                number_of_exceptions += 1
+                if number_of_exceptions % 3 == 0:
+                    save_model(transformer, MODEL_DIR)
+                    break
 
-    os.mkdir(MODEL_DIR)
-    transformer.save(MODEL_DIR)
+    save_model(transformer, MODEL_DIR)
 
 
 def main(args):      
