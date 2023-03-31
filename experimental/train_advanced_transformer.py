@@ -9,6 +9,7 @@ https://www.apache.org/licenses/LICENSE-2.0
 import argparse
 from datetime import datetime
 from random import randint, random
+from statistics import mean 
 import string
 
 import numpy as np
@@ -21,21 +22,21 @@ import advanced_transformer
 tokenizer = BertTokenizer.from_pretrained('bert-2-vocab.txt')
 N_CLASSES = tokenizer.vocab_size
 
-MODEL_DIR = 'advanced5.h5'
+MODEL_DIR = 'advanced7.h5'
 CATEGORY_FILE = '../categories_bert2_ts.txt'
 
-HIST_LEN = 20
+HIST_LEN = 7
 MAX_TIME = 60 * 30
 OVERALL = 200
 
 EPOCHS = 1000
-B_SIZE = 16
+B_SIZE = 32
 learning_rate = 0.00005
 
-SPEAKER_SIZE = 256
-SECOND_SIZE = 256
-OTHER_SIZE = 256
-OVERALL_SIZE = 256
+SPEAKER_SIZE = 228
+SECOND_SIZE = 456
+OTHER_SIZE = 228
+OVERALL_SIZE = 9999
 OUTPUT_SIZE = 128
 
 
@@ -56,7 +57,7 @@ def _load_model(path):
 def train_model(args):
     print("loading model...")
     transformer = _load_model(MODEL_DIR)
-    #transformer = advanced_transformer.create_model()
+    # transformer = advanced_transformer.create_model()
 
     print("loading categories...")
     with open(CATEGORY_FILE, 'r') as f:
@@ -66,7 +67,7 @@ def train_model(args):
     class_preds = []
     senders = []
     timestamps = []
-    cat_counts = np.ones(N_CLASSES)
+    cat_counts = np.ones(OVERALL_SIZE)
     for line in categories:
         line_arr = []
         trimmed_line = line.translate(str.maketrans('', '', string.whitespace)).split(',')
@@ -82,6 +83,11 @@ def train_model(args):
         timestamps.append(timestamp)
     cat_counts = cat_counts / len(categories)
     del categories
+
+    # sophisticated method for normalizing token counts
+    cat_thres = cat_counts - cat_counts.min()
+    lin_fac = 1.0 / cat_thres.max()
+    cat_thres = cat_thres * lin_fac
 
     print("processing training data...")
     X_speaker = []
@@ -100,7 +106,8 @@ def train_model(args):
         
         # Normalize training data based on how common the output is
         y = class_preds[pred_idx].copy()
-        if random() < sum(cat_counts[x] for x in y):
+        if random() < mean(cat_thres[x] for x in y):
+            # print("Skip: ", tokenizer.decode(y, skip_special_tokens=True))
             continue
         y.append(tokenizer.sep_token_id)
         y = y + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
@@ -144,7 +151,7 @@ def train_model(args):
                 other_x.append((class_preds[h_i] + [tokenizer.pad_token_id] * OTHER_SIZE)[:OTHER_SIZE])
 
         # Overall
-        overall_x = np.zeros(N_CLASSES)
+        overall_x = np.zeros(OVERALL_SIZE)
         for i in range(1, OVERALL):
             h_i = pred_idx - i
             if msgs_since - i < 0:
@@ -152,10 +159,7 @@ def train_model(args):
             for c in class_preds[h_i]:
                 overall_x[c] += max(0.5, (OVERALL - i) / OVERALL)
         overall_x = overall_x / cat_counts
-        # overall_x = overall_x / overall_x.sum()
-        # ind = np.argpartition(overall_x, -OVERALL_SIZE)[-OVERALL_SIZE:].tolist()
-        # overall_x = ind + [tokenizer.pad_token_id] * (OVERALL_SIZE)
-        # overall_x = overall_x[:OVERALL_SIZE]
+        overall_x = np.expand_dims(overall_x, 0)
 
         xb = [tokenizer.cls_token_id] + class_preds[pred_idx]
         xb = xb + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
@@ -200,7 +204,7 @@ def train_model(args):
             try:
                 transformer.fit(x=train,
                           y=tar,
-                          epochs=25,
+                          epochs=10,
                           batch_size=B_SIZE,
                           shuffle=True)
                 if batch % 50 == 0:

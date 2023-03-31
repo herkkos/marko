@@ -14,14 +14,13 @@ from transformers import BertTokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-2-vocab.txt')
 N_CLASSES = tokenizer.vocab_size
 
-HIST_LEN = 20
-DROPOUT = 0.2
+HIST_LEN = 7
 LEARNING_RATE = 0.0001
 
-SPEAKER_SIZE = 256
-SECOND_SIZE = 256
-OTHER_SIZE = 256
-OVERALL_SIZE = N_CLASSES
+SPEAKER_SIZE = 228
+SECOND_SIZE = 456
+OTHER_SIZE = 228
+OVERALL_SIZE = 9999
 
 NUM_LAYERS = 6
 INPUT_SIZE = 128
@@ -272,50 +271,44 @@ def create_model():
     # SPEAKER
     input_speaker = tf.keras.layers.Input(shape=(HIST_LEN, SPEAKER_SIZE))
     embedding_speaker = TFSummer(TFPositionalEncoding1D(SPEAKER_SIZE))(input_speaker)
-    lstm_speaker = tf.keras.layers.LSTM(128, return_sequences=False)(embedding_speaker)
+    lstm_speaker = tf.keras.layers.LSTM(228, return_sequences=True)(embedding_speaker)
     bnorm_speaker = tf.keras.layers.BatchNormalization()(lstm_speaker)
     relu_speaker = tf.keras.layers.PReLU()(bnorm_speaker)
     dropout_speaker = tf.keras.layers.Dropout(0.05)(relu_speaker)
-    model_speaker = tf.keras.models.Model(inputs=input_speaker, outputs=dropout_speaker)
+    reshape_speaker = tf.keras.layers.Reshape((1, HIST_LEN*SPEAKER_SIZE))(dropout_speaker)
+    model_speaker = tf.keras.models.Model(inputs=input_speaker, outputs=reshape_speaker)
 
     # SECOND
     input_second = tf.keras.layers.Input(shape=(HIST_LEN, SECOND_SIZE))
     embedding_second = TFSummer(TFPositionalEncoding1D(SECOND_SIZE))(input_second)
-    lstm_second = tf.keras.layers.LSTM(128, return_sequences=False)(embedding_second)
+    lstm_second = tf.keras.layers.LSTM(456, return_sequences=True)(embedding_second)
     bnorm_second = tf.keras.layers.BatchNormalization()(lstm_second)
     relu_second = tf.keras.layers.PReLU()(bnorm_second)
     dropout_second = tf.keras.layers.Dropout(0.05)(relu_second)
-    model_second = tf.keras.models.Model(inputs=input_second, outputs=dropout_second)
+    reshape_second = tf.keras.layers.Reshape((1, HIST_LEN*SECOND_SIZE))(dropout_second)
+    model_second = tf.keras.models.Model(inputs=input_second, outputs=reshape_second)
 
     # OTHER
     input_other = tf.keras.layers.Input(shape=(HIST_LEN, OTHER_SIZE))
     embedding_other = TFSummer(TFPositionalEncoding1D(OTHER_SIZE))(input_other)
-    lstm_other = tf.keras.layers.LSTM(64, return_sequences=False)(embedding_other)
+    lstm_other = tf.keras.layers.LSTM(228, return_sequences=True)(embedding_other)
     bnorm_other = tf.keras.layers.BatchNormalization()(lstm_other)
     relu_other = tf.keras.layers.PReLU()(bnorm_other)
     dropout_other = tf.keras.layers.Dropout(0.05)(relu_other)
-    model_other = tf.keras.models.Model(inputs=input_other, outputs=dropout_other)
+    reshape_other = tf.keras.layers.Reshape((1, HIST_LEN*OTHER_SIZE))(dropout_other)
+    model_other = tf.keras.models.Model(inputs=input_other, outputs=reshape_other)
 
     # OVERALL
-    input_overall = tf.keras.layers.Input(shape=(OVERALL_SIZE))
-    dense_overall = tf.keras.layers.Dense(1024)(input_overall)
-    bnorm_overall = tf.keras.layers.BatchNormalization()(dense_overall)
-    relu_overall = tf.keras.layers.PReLU()(bnorm_overall)
-    dropout_overall = tf.keras.layers.Dropout(0.05)(relu_overall)
-    model_overall = tf.keras.models.Model(inputs=input_overall, outputs=dropout_overall)
+    input_overall = tf.keras.layers.Input(shape=(1, OVERALL_SIZE))
 
     # COMBINED
-    input_time = tf.keras.layers.Input(shape=(1))
+    input_time = tf.keras.layers.Input(shape=(1, 1))
     combined = tf.keras.layers.Concatenate()([model_speaker.output,
                                               model_second.output,
                                               model_other.output,
                                               input_time,
-                                              model_overall.output])
-    dense = tf.keras.layers.Dense(INPUT_SIZE*INPUT_SIZE)(combined)
-    bnorm = tf.keras.layers.BatchNormalization()(dense)
-    relu = tf.keras.layers.PReLU()(bnorm)
-    dropout = tf.keras.layers.Dropout(0.1)(relu)
-    reshape = tf.keras.layers.Reshape((INPUT_SIZE, INPUT_SIZE))(dropout)
+                                              input_overall])
+    reshape = tf.keras.layers.Reshape((INPUT_SIZE, INPUT_SIZE))(combined)
     
     # Transformer
     encoder = Encoder(
