@@ -14,12 +14,10 @@ from transformers import BertTokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-2-vocab.txt')
 N_CLASSES = tokenizer.vocab_size
 
-HIST_LEN = 7
+HIST_LEN = 1
 LEARNING_RATE = 0.0001
 
-SPEAKER_SIZE = 228
-SECOND_SIZE = 456
-OTHER_SIZE = 228
+SPEAKER_SIZE = 128
 OVERALL_SIZE = 9999
 
 NUM_LAYERS = 6
@@ -79,33 +77,120 @@ class EncoderLayer(tf.keras.layers.Layer):
                    ):
         super().__init__()
 
-        self.mha = tf.keras.layers.MultiHeadAttention(
+        self.mha1 = tf.keras.layers.MultiHeadAttention(
             num_heads=num_attention_heads,
             key_dim=d_model,
             dropout=dropout_rate,
             )
+        self.mha2 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha3 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha4 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha5 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha6 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha7 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha8 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha9 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+        self.mha10 = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model,
+            dropout=dropout_rate,
+            )
+
+        self.concat = tf.keras.layers.Concatenate(axis=-2)
+
+        self.mha = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_attention_heads,
+            key_dim=d_model*5,
+            dropout=dropout_rate,
+            )
+        
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm3 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm4 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm5 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm6 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm7 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm8 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm9 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm10 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm11 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
 
         self.dropout1 = tf.keras.layers.Dropout(dropout_rate)
+        
+        # self.reshape = tf.keras.layers.Reshape((640, 640))
 
-    def call(self, x, training):
-        attn_output = self.mha(
-            query=x,
-            value=x,
-            key=x,
-            training=training,
-            )
+    def call(self, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, training):
+        attn_output1 = self.mha1(query=x1, value=x1, key=x1, training=training)
+        attn_output2 = self.mha2(query=x2, value=x2, key=x2, training=training)
+        attn_output3 = self.mha3(query=x3, value=x3, key=x3, training=training)
+        attn_output4 = self.mha4(query=x4, value=x4, key=x4, training=training)
+        attn_output5 = self.mha5(query=x5, value=x5, key=x5, training=training)
+        attn_output6 = self.mha6(query=x6, value=x6, key=x6, training=training)
+        attn_output7 = self.mha7(query=x7, value=x7, key=x7, training=training)
+        attn_output8 = self.mha8(query=x8, value=x8, key=x8, training=training)
+        attn_output9 = self.mha9(query=x9, value=x9, key=x9, training=training)
+        attn_output10 = self.mha10(query=x10, value=x10, key=x10, training=training)
 
-        out1 = self.layernorm1(x + attn_output)
+        out1 = self.layernorm1(x1 + attn_output1)
+        out2 = self.layernorm1(x2 + attn_output2)
+        out3 = self.layernorm1(x3 + attn_output3)
+        out4 = self.layernorm1(x4 + attn_output4)
+        out5 = self.layernorm1(x5 + attn_output5)
+        out6 = self.layernorm1(x6 + attn_output6)
+        out7 = self.layernorm1(x7 + attn_output7)
+        out8 = self.layernorm1(x8 + attn_output8)
+        out9 = self.layernorm1(x9 + attn_output9)
+        out10 = self.layernorm1(x10 + attn_output10)
 
-        ffn_output = self.ffn(out1)
+        concat_output = self.concat([out1, out2, out3, out4, out5, out6, out7, out8, out9, out10])
+
+        attn_output = self.mha(query=concat_output, value=concat_output, key=concat_output, training=training)
+
+        out11 = self.layernorm11(concat_output + attn_output)
+
+        ffn_output = self.ffn(out11)
         ffn_output = self.dropout1(ffn_output, training=training)
-        out2 = self.layernorm2(out1 + ffn_output)
+        out = self.layernorm(out11 + ffn_output)
 
-        return out2
+        # out = self.reshape(out)
+
+        return out
 
 class Encoder(tf.keras.layers.Layer):
     def __init__(self,
@@ -121,6 +206,9 @@ class Encoder(tf.keras.layers.Layer):
 
         self.d_model = d_model
         self.num_layers = num_layers
+
+        self.pos_embedding = TFSummer(TFPositionalEncoding1D(SPEAKER_SIZE))
+
         self.enc_layers = [
             EncoderLayer(
               d_model=d_model,
@@ -128,15 +216,45 @@ class Encoder(tf.keras.layers.Layer):
               dff=dff,
               dropout_rate=dropout_rate)
             for _ in range(num_layers)]
-        self.dropout = tf.keras.layers.Dropout(dropout_rate)
 
-    def call(self, x, training):
-          x = self.dropout(x, training=training)
+        self.dropout1 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout2 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout3 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout4 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout5 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout6 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout7 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout8 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout9 = tf.keras.layers.Dropout(dropout_rate)
+        self.dropout10 = tf.keras.layers.Dropout(dropout_rate)
 
-          for i in range(self.num_layers):
-              x = self.enc_layers[i](x, training)
+    def call(self, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, training):
+        x1 = self.pos_embedding(x1)
+        x2 = self.pos_embedding(x2)
+        x3 = self.pos_embedding(x3)
+        x4 = self.pos_embedding(x4)
+        x5 = self.pos_embedding(x5)
+        x6 = self.pos_embedding(x6)
+        x7 = self.pos_embedding(x7)
+        x8 = self.pos_embedding(x8)
+        x9 = self.pos_embedding(x9)
+        x10 = self.pos_embedding(x10)
+        
+        x1 = self.dropout1(x1, training=training)
+        x2 = self.dropout2(x2, training=training)
+        x3 = self.dropout3(x3, training=training)
+        x4 = self.dropout4(x4, training=training)
+        x5 = self.dropout5(x5, training=training)
+        x6 = self.dropout6(x6, training=training)
+        x7 = self.dropout7(x7, training=training)
+        x8 = self.dropout8(x8, training=training)
+        x9 = self.dropout9(x9, training=training)
+        x10 = self.dropout10(x10, training=training)
 
-          return x
+        for i in range(self.num_layers):
+            x = self.enc_layers[i](x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, training)
+
+        return x
 
 
 class DecoderLayer(tf.keras.layers.Layer):
@@ -160,6 +278,8 @@ class DecoderLayer(tf.keras.layers.Layer):
             dropout=dropout_rate
         )
 
+        self.expand = tf.keras.layers.Reshape((1, 128, 128))
+
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
@@ -174,6 +294,9 @@ class DecoderLayer(tf.keras.layers.Layer):
           mask1 = mask[:, :, None]
           mask2 = mask[:, None, :]
           self_attention_mask = mask1 & mask2
+
+        # self_attention_mask = self.expand(self_attention_mask)
+        # x = self.expand(x)
 
         attn_masked, _ = self.mha_masked(
             query=x,
@@ -268,48 +391,17 @@ def create_model():
     # INPUTS
     input_target = tf.keras.layers.Input(shape=(OUTPUT_SIZE))
 
-    # SPEAKER
-    input_speaker = tf.keras.layers.Input(shape=(HIST_LEN, SPEAKER_SIZE))
-    embedding_speaker = TFSummer(TFPositionalEncoding1D(SPEAKER_SIZE))(input_speaker)
-    lstm_speaker = tf.keras.layers.LSTM(228, return_sequences=True)(embedding_speaker)
-    bnorm_speaker = tf.keras.layers.BatchNormalization()(lstm_speaker)
-    relu_speaker = tf.keras.layers.PReLU()(bnorm_speaker)
-    dropout_speaker = tf.keras.layers.Dropout(0.05)(relu_speaker)
-    reshape_speaker = tf.keras.layers.Reshape((1, HIST_LEN*SPEAKER_SIZE))(dropout_speaker)
-    model_speaker = tf.keras.models.Model(inputs=input_speaker, outputs=reshape_speaker)
-
-    # SECOND
-    input_second = tf.keras.layers.Input(shape=(HIST_LEN, SECOND_SIZE))
-    embedding_second = TFSummer(TFPositionalEncoding1D(SECOND_SIZE))(input_second)
-    lstm_second = tf.keras.layers.LSTM(456, return_sequences=True)(embedding_second)
-    bnorm_second = tf.keras.layers.BatchNormalization()(lstm_second)
-    relu_second = tf.keras.layers.PReLU()(bnorm_second)
-    dropout_second = tf.keras.layers.Dropout(0.05)(relu_second)
-    reshape_second = tf.keras.layers.Reshape((1, HIST_LEN*SECOND_SIZE))(dropout_second)
-    model_second = tf.keras.models.Model(inputs=input_second, outputs=reshape_second)
-
-    # OTHER
-    input_other = tf.keras.layers.Input(shape=(HIST_LEN, OTHER_SIZE))
-    embedding_other = TFSummer(TFPositionalEncoding1D(OTHER_SIZE))(input_other)
-    lstm_other = tf.keras.layers.LSTM(228, return_sequences=True)(embedding_other)
-    bnorm_other = tf.keras.layers.BatchNormalization()(lstm_other)
-    relu_other = tf.keras.layers.PReLU()(bnorm_other)
-    dropout_other = tf.keras.layers.Dropout(0.05)(relu_other)
-    reshape_other = tf.keras.layers.Reshape((1, HIST_LEN*OTHER_SIZE))(dropout_other)
-    model_other = tf.keras.models.Model(inputs=input_other, outputs=reshape_other)
-
-    # OVERALL
-    input_overall = tf.keras.layers.Input(shape=(1, OVERALL_SIZE))
-
-    # COMBINED
-    input_time = tf.keras.layers.Input(shape=(1, 1))
-    combined = tf.keras.layers.Concatenate()([model_speaker.output,
-                                              model_second.output,
-                                              model_other.output,
-                                              input_time,
-                                              input_overall])
-    reshape = tf.keras.layers.Reshape((INPUT_SIZE, INPUT_SIZE))(combined)
-    
+    input_1 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_2 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_3 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_4 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_5 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_6 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_7 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_8 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_9 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+    input_10 = tf.keras.layers.Input(shape=(1, SPEAKER_SIZE))
+ 
     # Transformer
     encoder = Encoder(
         num_layers=NUM_LAYERS,
@@ -317,7 +409,7 @@ def create_model():
         num_attention_heads=NUM_ATTENTION_HEADS,
         dff=DFF,
         input_vocab_size=N_CLASSES,
-        dropout_rate=0.1)(reshape)
+        dropout_rate=0.1)(input_1, input_2, input_3, input_4, input_5, input_6, input_7, input_8, input_9, input_10)
     decoder = Decoder(
         num_layers=NUM_LAYERS,
         d_model=OUTPUT_SIZE,
@@ -327,11 +419,16 @@ def create_model():
         dropout_rate=0.1)(input_target, encoder, None)
     final_layer = tf.keras.layers.Dense(N_CLASSES)(decoder)
     model = tf.keras.models.Model(inputs=[
-        model_speaker.input,
-        model_second.input,
-        model_other.input,
-        input_time,
-        input_overall,
+        input_1,
+        input_2,
+        input_3,
+        input_4,
+        input_5,
+        input_6,
+        input_7,
+        input_8,
+        input_9,
+        input_10,
         input_target], outputs=final_layer)
     
     opt = tf.keras.optimizers.Adam(LEARNING_RATE,
