@@ -153,8 +153,6 @@ class EncoderLayer(tf.keras.layers.Layer):
 
         self.dropout1 = tf.keras.layers.Dropout(dropout_rate)
         
-        # self.reshape = tf.keras.layers.Reshape((640, 640))
-
     def call(self, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, training):
         attn_output1 = self.mha1(query=x1, value=x1, key=x1, training=training)
         attn_output2 = self.mha2(query=x2, value=x2, key=x2, training=training)
@@ -187,8 +185,6 @@ class EncoderLayer(tf.keras.layers.Layer):
         ffn_output = self.ffn(out11)
         ffn_output = self.dropout1(ffn_output, training=training)
         out = self.layernorm(out11 + ffn_output)
-
-        # out = self.reshape(out)
 
         return out
 
@@ -294,9 +290,6 @@ class DecoderLayer(tf.keras.layers.Layer):
           mask1 = mask[:, :, None]
           mask2 = mask[:, None, :]
           self_attention_mask = mask1 & mask2
-
-        # self_attention_mask = self.expand(self_attention_mask)
-        # x = self.expand(x)
 
         attn_masked, _ = self.mha_masked(
             query=x,

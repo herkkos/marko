@@ -31,7 +31,7 @@ OVERALL = 200
 
 EPOCHS = 1000
 B_SIZE = 32
-learning_rate = 0.00005
+learning_rate = 0.00001
 
 INPUT_SIZE = 128
 OVERALL_SIZE = 9999
@@ -54,8 +54,8 @@ def _load_model(path):
 
 def train_model(args):
     print("loading model...")
-    # transformer = _load_model(MODEL_DIR)
-    transformer = advanced_transformer.create_model()
+    transformer = _load_model(MODEL_DIR)
+    # transformer = advanced_transformer.create_model()
 
     print("loading categories...")
     with open(CATEGORY_FILE, 'r') as f:
@@ -110,9 +110,9 @@ def train_model(args):
         
         # Normalize training data based on how common the output is
         y = class_preds[pred_idx].copy()
-        if random() < mean(cat_thres[x] for x in y):
+        # if random() < mean(cat_thres[x] for x in y):
             # print("Skip: ", tokenizer.decode(y, skip_special_tokens=True))
-            continue
+        #     continue
 
         y.append(tokenizer.sep_token_id)
         y = y + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
@@ -127,20 +127,116 @@ def train_model(args):
                 continue
             msgs_since += 1
 
-        if msgs_since < HIST_LEN:
-            continue
-
-        x2 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x1 = [(class_preds[pred_idx-1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x3 = [(class_preds[pred_idx-2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x4 = [(class_preds[pred_idx-3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x5 = [(class_preds[pred_idx-4] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x6 = [(class_preds[pred_idx-5] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x7 = [(class_preds[pred_idx-6] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x9 = [(class_preds[pred_idx-7] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x8 = [(class_preds[pred_idx-8] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
-        x10 = [(class_preds[pred_idx-9] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
-        
+        if msgs_since > 0:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 1:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 2:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx - 2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 3:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx - 2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [(class_preds[pred_idx - 3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 4:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx - 2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [(class_preds[pred_idx - 3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [(class_preds[pred_idx - 4] +[tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 5:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx - 2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [(class_preds[pred_idx - 3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [(class_preds[pred_idx - 4] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [(class_preds[pred_idx - 5] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 6:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx - 2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [(class_preds[pred_idx - 3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [(class_preds[pred_idx - 4] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [(class_preds[pred_idx - 5] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [(class_preds[pred_idx - 6] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 7:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx - 2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [(class_preds[pred_idx - 3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [(class_preds[pred_idx - 4] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [(class_preds[pred_idx - 5] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [(class_preds[pred_idx - 6] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [(class_preds[pred_idx - 7] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 8:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx - 1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx - 2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [(class_preds[pred_idx - 3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [(class_preds[pred_idx - 4] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [(class_preds[pred_idx - 5] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [(class_preds[pred_idx - 6] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [(class_preds[pred_idx - 7] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [(class_preds[pred_idx - 8] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [([tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
+        if msgs_since > 9:
+            x1 = [(class_preds[pred_idx] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x2 = [(class_preds[pred_idx-1] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x3 = [(class_preds[pred_idx-2] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x4 = [(class_preds[pred_idx-3] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x5 = [(class_preds[pred_idx-4] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x6 = [(class_preds[pred_idx-5] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x7 = [(class_preds[pred_idx-6] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x9 = [(class_preds[pred_idx-7] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x8 = [(class_preds[pred_idx-8] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE] ]
+            x10 = [(class_preds[pred_idx-9] + [tokenizer.pad_token_id] * INPUT_SIZE)[:INPUT_SIZE]]
 
         xb = [tokenizer.cls_token_id] + class_preds[pred_idx]
         xb = xb + [tokenizer.pad_token_id] * (OUTPUT_SIZE)
